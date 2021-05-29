@@ -10,7 +10,7 @@ public class AnimatorEditorWindow : EditorWindow
 {
     //General
     private static Animator[] allAnimators = null;
-    //string[] allAnim;
+    Animator currentAnimator = null;
     int animatorSelected = 0;
     private static bool sceneHasAnimators = false;
 
@@ -60,10 +60,6 @@ public class AnimatorEditorWindow : EditorWindow
     private void OnHierarchyChanged()
     {
         allAnimators = FindAllAnimatorsInScene();
-        for (int i = 0; i < allAnimators.Length; )
-        {
-
-        }
     }
 
     private void OnSceneOpened(Scene scene, OpenSceneMode mode)
@@ -74,6 +70,7 @@ public class AnimatorEditorWindow : EditorWindow
     private void OnPlayModeStateChange(PlayModeStateChange state)
     {
         DisableAnimations();
+        allAnimators = FindAllAnimatorsInScene();
     }
 
     private void DisableAnimations()
@@ -129,6 +126,10 @@ public class AnimatorEditorWindow : EditorWindow
                     List<Animator> searchAnimatorList = new List<Animator>();
                     if (sceneHasAnimators)
                     {
+                        if(currentAnimator == null)
+                        {
+                            currentAnimator = allAnimators[0];
+                        }
                         for (int i = 0; i < allAnimators.Length; i++)
                         {
                             searchAnimatorList.Add(allAnimators[i]);
@@ -150,15 +151,26 @@ public class AnimatorEditorWindow : EditorWindow
                         for (int i = 0; i < searchAnimatorList.Count; ++i)
                         {
                             GUI.backgroundColor = new Color(0,0,0,0);
-                            if (GUILayout.Button(searchAnimatorList[i].gameObject.name, buttonStyle))
+                            if (searchAnimatorList[i] != null)
                             {
-                                animatorSelected = i;
-                                Selection.activeObject = allAnimators[animatorSelected];
+                                if (GUILayout.Button(searchAnimatorList[i].gameObject.name, buttonStyle))
+                                {
+                                    animatorSelected = i;
+                                    Selection.activeObject = allAnimators[i];
+                                    currentAnimator = allAnimators[i];
+                                }
                             }
                         }
                         //animatorSelected = EditorGUILayout.Popup(animatorSelected, allAnim);
                         //Selection.activeObject = allAnimators[animatorSelected];
-                        objectPosition = allAnimators[animatorSelected].transform.position;
+                        if(currentAnimator != null)
+                        {
+                            objectPosition = currentAnimator.transform.position;
+                        }
+                        else
+                        {
+                            currentAnimator = allAnimators[0];
+                        }
 
                         EditorGUILayout.EndScrollView();
                         GUILayout.EndVertical();
@@ -167,20 +179,20 @@ public class AnimatorEditorWindow : EditorWindow
                         GUI.backgroundColor = baseColor;
                         if (GUILayout.Button("Focus on GameObject"))
                         {
-                            Selection.activeObject = allAnimators[animatorSelected];
+                            Selection.activeObject = currentAnimator;
                             EditorGUIUtility.PingObject(Selection.activeObject);
                             SceneView.lastActiveSceneView.FrameSelected();
                         }
 
-                        currentAnimatorController = allAnimators[animatorSelected].runtimeAnimatorController as AnimatorController;
+                        currentAnimatorController = currentAnimator.runtimeAnimatorController as AnimatorController;
 
 
                         GUILayout.Label("Animator Info", EditorStyles.boldLabel);
                         EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-                        style.alignment = TextAnchor.UpperLeft; GUILayout.Label("Animator Selected : " + allAnimators[animatorSelected].gameObject.name);
+                        style.alignment = TextAnchor.UpperLeft; GUILayout.Label("Animator Selected : " + currentAnimator.gameObject.name);
                         if (currentAnimatorController != null)
                         {
-                            style.alignment = TextAnchor.UpperLeft; GUILayout.Label("Layers : " + allAnimators[animatorSelected].layerCount);
+                            style.alignment = TextAnchor.UpperLeft; GUILayout.Label("Layers : " + currentAnimator.layerCount);
                             style.alignment = TextAnchor.UpperLeft; GUILayout.Label("Clips : " + currentAnimatorController.animationClips.Length);
                         }
                         else
@@ -245,13 +257,13 @@ public class AnimatorEditorWindow : EditorWindow
                             if (previousTime != time)
                             {
                                 AnimationMode.StartAnimationMode();
-                                AnimationMode.SampleAnimationClip(allAnimators[animatorSelected].gameObject, allAnimatorAnimations[animationSelected], time);
-                                objectPosition = allAnimators[animatorSelected].transform.position;
+                                AnimationMode.SampleAnimationClip(currentAnimator.gameObject, allAnimatorAnimations[animationSelected], time);
+                                objectPosition = currentAnimator.transform.position;
                             }
                             else
                             {
                                 AnimationMode.StopAnimationMode();
-                                allAnimators[animatorSelected].transform.position = objectPosition;
+                                currentAnimator.transform.position = objectPosition;
                             }
                         }
                         // Set the rect for the sub-labels
@@ -351,9 +363,16 @@ public class AnimatorEditorWindow : EditorWindow
         Repaint();
         if (!EditorApplication.isPlaying)
         {
+            if (Selection.activeGameObject)
+            {
+                if (Selection.activeGameObject.GetComponent<Animator>() && currentAnimator.gameObject != Selection.activeGameObject)
+                {
+                    currentAnimator = Selection.activeGameObject.GetComponent<Animator>();
+                }
+            }
             if (needToPlay && !isInPause && !isInWait)
             {
-                AnimationMode.SampleAnimationClip(allAnimators[animatorSelected].gameObject, allAnimatorAnimations[animationSelected], time);
+                AnimationMode.SampleAnimationClip(currentAnimator.gameObject, allAnimatorAnimations[animationSelected], time);
 
                 //SceneView.RepaintAll();
                 
